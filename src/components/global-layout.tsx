@@ -31,17 +31,20 @@ export default function GlobalLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
-
       <main className="flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {children}
       </main>
-
       <footer className="w-full bg-gray-800 text-white py-8">
-        <div className="text-center w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h3 className="text-lg font-semibold mb-2">Moneyverse</h3>
-          <p className="text-gray-400 text-sm">
-            금융 상식을 더 쉽고 스마트하게
-          </p>
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col items-center justify-center space-y-4 text-center">
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Moneyverse</h3>
+              <p className="text-gray-400 text-sm">금융을 더 쉽고 스마트하게</p>
+            </div>
+            <div className="text-gray-400 text-sm">
+              <p>제작자: 김성진</p>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
