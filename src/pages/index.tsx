@@ -1,6 +1,8 @@
 import type { NextPage } from "next";
 import Image from "next/image";
-
+import { useRouter } from "next/router";
+import { useEffect } from "react";
+/* 메인 페이지는 자주 변경되지 않으므로 정적 페이지로 처리 */
 export async function getStaticProps() {
   return {
     props: {},
@@ -8,6 +10,18 @@ export async function getStaticProps() {
 }
 
 const Home: NextPage = () => {
+  const router = useRouter();
+
+  const startQuiz = (difficulty: "easy" | "medium" | "hard") => {
+    router.push(`/quiz?difficulty=${difficulty}`);
+  };
+
+  useEffect(() => {
+    router.prefetch(`/quiz?difficulty=easy`);
+    router.prefetch(`/quiz?difficulty=medium`);
+    router.prefetch(`/quiz?difficulty=hard`);
+  }, []);
+
   return (
     <article className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <section className="flex flex-col items-center space-y-8">
@@ -29,13 +43,22 @@ const Home: NextPage = () => {
             난이도를 선택하시겠습니까?
           </h2>
           <div className="flex flex-col items-center sm:flex-row gap-4 justify-center">
-            <button className="w-32 px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
+            <button
+              className="w-32 px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+              onClick={() => startQuiz("easy")}
+            >
               쉬움
             </button>
-            <button className="w-32 px-6 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors">
+            <button
+              className="w-32 px-6 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
+              onClick={() => startQuiz("medium")}
+            >
               중간
             </button>
-            <button className="w-32 px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">
+            <button
+              className="w-32 px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              onClick={() => startQuiz("hard")}
+            >
               어려움
             </button>
           </div>

@@ -10,6 +10,7 @@
     "optimize-image": "ts-node scripts/optimize-image.ts"
   },
   "dependencies": {
+    "@google/genai": "^0.7.0",
     "next": "14.2.25",
     "react": "^18",
     "react-dom": "^18",
