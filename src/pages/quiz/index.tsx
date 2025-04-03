@@ -1,26 +1,14 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+import { QuizType } from "@/types/quiz";
 
-type QuizOption = {
-  a: string;
-  b: string;
-  c: string;
-  d: string;
-};
-
-type QuizQuestion = {
-  question: string;
-  options: QuizOption;
-  explanation: string;
-  correctAnswer: string;
-};
-
+// SSR 방식으로 사용시 data 패칭이 오래 걸리는 문제 때문에
+// (기본)초기 렌더링은 SSG로 처리하고, 이후 데이터 패칭은 CSR로 처리. 이전 페이지에서 프리페치 처리떄문에 데이터 패칭 빠르게 요청
 export default function Quiz() {
   const router = useRouter();
   const { difficulty } = router.query;
-  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [questions, setQuestions] = useState<QuizType[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // 쿼리 파라미터가 로드된 후에만 API 호출
@@ -32,8 +20,6 @@ export default function Quiz() {
   const fetchQuizQuestions = async () => {
     try {
       setLoading(true);
-      setError(null);
-
       const response = await fetch("/api/generateQuiz", {
         method: "POST",
         headers: {
@@ -49,37 +35,19 @@ export default function Quiz() {
 
       const data = await response.json();
       setQuestions(data.data);
+      setLoading(false);
     } catch (err) {
       console.error("퀴즈 데이터 로딩 오류:", err);
-      setError(
-        err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다"
-      );
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">경제 퀴즈</h1>
-
-      {loading && <p>퀴즈를 생성하는 중입니다...</p>}
-
-      {error && (
-        <div className="bg-red-100 p-4 mb-4 rounded">
-          <p className="text-red-700">{error}</p>
-          <button
-            onClick={fetchQuizQuestions}
-            className="mt-2 bg-red-500 text-white px-4 py-2 rounded"
-          >
-            다시 시도
-          </button>
-        </div>
-      )}
-
-      {!loading && !error && questions.length > 0 && (
+      {loading && <p>퀴즈를 생성하는 중입니다... 스켈레톤 표시</p>}
+      {!loading && questions.length > 0 && (
         <div>
-          {questions.map((q, index) => (
+          {questions.map((q: QuizType, index: number) => (
             <div key={index} className="mb-6 p-4 border rounded shadow">
               <h2 className="font-bold mb-2">
                 문제 {index + 1}: {q.question}

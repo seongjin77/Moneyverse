@@ -89,7 +89,7 @@ export default async function handler(
     // API 응답 반환
     res.status(200).json({
       success: true,
-      data: JSON.parse(response.text || ""),
+      data: JSON.parse(response.text || "[]"),
     });
   } catch (error) {
     console.error("API 요청 오류:", error);
