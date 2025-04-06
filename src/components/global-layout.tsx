@@ -31,7 +31,7 @@ export default function GlobalLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
-      <main className="flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <main className="flex flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {children}
       </main>
       <footer className="w-full bg-gray-800 text-white py-8">
