@@ -17,9 +17,7 @@ const Home: NextPage = () => {
   };
 
   useEffect(() => {
-    router.prefetch(`/quiz?difficulty=easy`);
-    router.prefetch(`/quiz?difficulty=medium`);
-    router.prefetch(`/quiz?difficulty=hard`);
+    router.prefetch(`/quiz`);
   }, []);
 
   return (
@@ -39,9 +37,7 @@ const Home: NextPage = () => {
         </div>
 
         <div className="text-center space-y-4">
-          <h2 className="text-2xl font-bold text-gray-800">
-            난이도를 선택하시겠습니까?
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-800">난이도를 선택하시겠습니까?</h2>
           <div className="flex flex-col items-center sm:flex-row gap-4 justify-center">
             <button
               className="w-32 px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
@@ -67,9 +63,7 @@ const Home: NextPage = () => {
 
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
         <article className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-xl font-semibold text-gray-800 mb-3">
-            하루 열문제
-          </h3>
+          <h3 className="text-xl font-semibold text-gray-800 mb-3">하루 열문제</h3>
           <p className="text-gray-600">
             매일 10개의 금융 문제를 풀며
             <br />
@@ -77,9 +71,7 @@ const Home: NextPage = () => {
           </p>
         </article>
         <article className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-xl font-semibold text-gray-800 mb-3">
-            결과 피드백
-          </h3>
+          <h3 className="text-xl font-semibold text-gray-800 mb-3">결과 피드백</h3>
           <p className="text-gray-600">
             문제 풀이 후 상세한 피드백을 통해
             <br />
@@ -87,9 +79,7 @@ const Home: NextPage = () => {
           </p>
         </article>
         <article className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-xl font-semibold text-gray-800 mb-3">
-            단계별 학습
-          </h3>
+          <h3 className="text-xl font-semibold text-gray-800 mb-3">단계별 학습</h3>
           <p className="text-gray-600">
             난이도별로 구성된 문제를 통해
             <br />

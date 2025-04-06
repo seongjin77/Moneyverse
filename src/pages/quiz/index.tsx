@@ -21,13 +21,13 @@ export default function Quiz() {
   const [currentAnswer, setCurrentAnswer] = useState<AnswerType | null>(null);
   const [answerList, setAnswerList] = useState<AnswerType[]>([]);
 
-  const nextQuestion = () => {
-    if (currentQuestion < questions.length - 1) {
+  const moveToNextStep = () => {
+    if (currentQuestion < questions.length - 1 && currentAnswer) {
       setCurrentQuestion(currentQuestion + 1);
-      if (currentAnswer) {
-        setAnswerList((prev) => [...prev, currentAnswer]);
-      }
+      setAnswerList((prev) => [...prev, currentAnswer]);
       setCurrentAnswer(null);
+    } else {
+      router.push("/result");
     }
   };
 
@@ -63,6 +63,10 @@ export default function Quiz() {
     }
   }, [router.isReady]);
 
+  useEffect(() => {
+    router.prefetch("/result");
+  }, []);
+
   return (
     <div className="container mx-auto p-4 flex flex-col flex-grow">
       <h2 className="text-2xl font-bold mb-4">경제 퀴즈</h2>
@@ -77,7 +81,7 @@ export default function Quiz() {
           {questions.length > 0 && (
             <>
               <QuizBox data={questions[currentQuestion]} setCurrentAnswer={setCurrentAnswer} />
-              <button className="bg-[rgb(255,151,1)] text-white px-4 py-2 rounded" onClick={nextQuestion}>
+              <button className="bg-[rgb(255,151,1)] text-white px-4 py-2 rounded" onClick={moveToNextStep}>
                 {currentQuestion < questions.length - 1 ? "다음 문제" : "결과 보기"}
               </button>
             </>
