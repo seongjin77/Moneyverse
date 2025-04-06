@@ -24,7 +24,7 @@ export default async function handler(
       apiKey: apiKey,
     });
 
-    const prompt = `넌 뛰어난 경제 선생님이고 경제 상식을 알 수 있는 문제 10개를 JSON 형식으로 만들어줘. 난이도는 ${
+    const prompt = `넌 뛰어난 경제 선생님이고 경제 상식을 알 수 있는 문제 3개를 JSON 형식으로 만들어줘. 난이도는 ${
       difficulty || "보통"
     }으로 설정해줘. 각 문제에는 "question", "options" (a, b, c, d), "explanation", "correctAnswer" 필드가 있어야 해. 한국 사람이 쉽게 이해할 수 있도록 문제를 만들어주고 한국어로 대답해줘 가끔은 경제 용어를 맞추는 문제도 만들어줘`;
 
@@ -38,6 +38,11 @@ export default async function handler(
           items: {
             type: Type.OBJECT,
             properties: {
+              id: {
+                type: Type.NUMBER,
+                description: "문제 번호",
+                nullable: false,
+              },
               question: {
                 type: Type.STRING,
                 description: "The question",
