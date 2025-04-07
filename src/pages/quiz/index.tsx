@@ -3,11 +3,8 @@ import { useEffect, useState } from "react";
 import { QuizType } from "@/types/quiz";
 import Ring from "@/components/ui/Ring";
 import QuizBox from "@/components/QuizBox";
-
-type AnswerType = {
-  questionId: number;
-  answer: string;
-};
+import { AnswerType } from "@/types/quiz";
+import { useQuizStore } from "@/store/useQuizStore";
 
 // SSR 방식으로 사용시 data 패칭이 오래 걸리는 문제 때문에
 // (기본)초기 렌더링은 SSG로 처리하고, 이후 데이터 패칭은 CSR로 처리. 이전 페이지에서 프리페치 처리떄문에 데이터 패칭 빠르게 요청
@@ -20,13 +17,18 @@ export default function Quiz() {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [currentAnswer, setCurrentAnswer] = useState<AnswerType | null>(null);
   const [answerList, setAnswerList] = useState<AnswerType[]>([]);
+  const { setStoreQuizList, setStoreAnswerList } = useQuizStore();
 
+  // 선택 안하면 다음 문제로 넘어가지 않게 처리
+  // 마지막 문제 선택시 answerList 저장 후 결과 페이지로 이동
   const moveToNextStep = () => {
     if (currentQuestion < questions.length - 1 && currentAnswer) {
       setCurrentQuestion(currentQuestion + 1);
       setAnswerList((prev) => [...prev, currentAnswer]);
       setCurrentAnswer(null);
-    } else {
+    } else if (currentQuestion === questions.length - 1 && currentAnswer) {
+      setStoreQuizList(questions);
+      setStoreAnswerList([...answerList, currentAnswer]);
       router.push("/result");
     }
   };

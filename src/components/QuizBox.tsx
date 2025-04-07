@@ -1,10 +1,5 @@
-import { QuizType } from "@/types/quiz";
+import { QuizType, AnswerType } from "@/types/quiz";
 import { useEffect, useState } from "react";
-
-type AnswerType = {
-  questionId: number;
-  answer: string;
-};
 
 export default function QuizBox({
   data,
