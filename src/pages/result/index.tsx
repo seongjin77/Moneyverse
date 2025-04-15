@@ -1,85 +1,266 @@
 "use client";
-import { useQuizStore } from "@/store/useQuizStore";
-import { useEffect, useMemo, useState } from "react";
-import { AnswerType, QuizType } from "@/types/quiz";
 
-import { Label, Pie, PieChart } from "recharts";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useQuizStore } from "@/store/useQuizStore";
+import { useMemo } from "react";
+
+import { Label, Pie, PieChart, Cell } from "recharts";
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-const chartData = [
-  { browser: "chrome", visitors: 275, fill: "var(--color-chrome)" },
-  { browser: "safari", visitors: 200, fill: "var(--color-safari)" },
-  { browser: "firefox", visitors: 287, fill: "var(--color-firefox)" },
-  { browser: "edge", visitors: 173, fill: "var(--color-edge)" },
-  { browser: "other", visitors: 190, fill: "var(--color-other)" },
-];
+
+// 차트 설정 직접 문자열로 관리
 const chartConfig = {
-  visitors: {
-    label: "Visitors",
+  score: {
+    label: "정답률",
   },
-  chrome: {
-    label: "Chrome",
+  financial: {
+    label: "금융 상품/기관 이해",
     color: "hsl(var(--chart-1))",
   },
-  safari: {
-    label: "Safari",
+  economicConcepts: {
+    label: "경제 개념/지표 이해",
     color: "hsl(var(--chart-2))",
   },
-  firefox: {
-    label: "Firefox",
+  realEstate: {
+    label: "부동산",
     color: "hsl(var(--chart-3))",
   },
-  edge: {
-    label: "Edge",
-    color: "hsl(var(--chart-4))",
-  },
-  other: {
-    label: "Other",
-    color: "hsl(var(--chart-5))",
-  },
 } satisfies ChartConfig;
+
+// 결과 데이터 타입 정의
+interface CategoryResult {
+  category: string;
+  name: string;
+  percentage: number;
+  wrongCount: number;
+  totalCount: number;
+  correctRate: number;
+  color: string;
+}
 
 export default function Result() {
   const quizList = useQuizStore((state) => state.storeQuizList);
   const answerList = useQuizStore((state) => state.storeAnswerList);
-  const totalVisitors = useMemo(() => {
-    return chartData.reduce((acc, curr) => acc + curr.visitors, 0);
-  }, []);
+
+  // 결과 데이터 계산
+  const resultData = useMemo<CategoryResult[]>(() => {
+    if (!quizList.length || !answerList.length) return [];
+
+    // 카테고리별 오답/문제 수 카운트
+    const categoryResults: Record<string, { wrong: number; total: number }> = {
+      financial: { wrong: 0, total: 0 },
+      economicConcepts: { wrong: 0, total: 0 },
+      realEstate: { wrong: 0, total: 0 },
+    };
+
+    // 총 오답 수 계산
+    let totalWrongCount = 0;
+
+    // 각 문제별 사용자 정답 확인
+    const categoryKeys = ["financial", "economicConcepts", "realEstate"] as const;
+
+    quizList.forEach((quiz) => {
+      const categoryKey = categoryKeys.find((key) => quiz.category === key);
+      if (categoryKey) {
+        categoryResults[categoryKey].total += 1;
+      }
+
+      // 오답인 경우
+      const isWrong = answerList.find((answer) => answer.questionId === quiz.id)?.answer !== quiz.correctAnswer;
+
+      if (isWrong) {
+        categoryResults[quiz.category].wrong += 1;
+        totalWrongCount += 1;
+      }
+    });
+
+    // 차트 데이터 형식으로 변환 (오답 비율 기준)
+    return Object.entries(categoryResults)
+      .map(([category, { wrong, total }]) => {
+        // 전체 오답 중 이 카테고리의 오답 비율
+        const percentage = totalWrongCount > 0 && wrong > 0 ? Math.round((wrong / totalWrongCount) * 100) : 0;
+
+        // 카테고리별 정답률 계산 (맞은 문제 / 전체 문제)
+        const correctRate = total > 0 ? Math.round(((total - wrong) / total) * 100) : 0;
+
+        // category를 chartConfig의 키 타입으로 타입 단언
+        const categoryKey = category as keyof typeof chartConfig;
+
+        return {
+          category,
+          name: chartConfig[categoryKey].label, // 직접 label 값을 name으로 사용
+          percentage,
+          wrongCount: wrong,
+          totalCount: total,
+          correctRate, // 카테고리별 정답률 추가
+          // score 카테고리는 color 속성이 없으므로 조건부로 처리
+          color: categoryKey === "score" ? "" : chartConfig[categoryKey].color || "",
+        };
+      })
+      .filter((item) => item.totalCount > 0); // 문제가 있는 카테고리만 표시 (오답이 없어도 표시)
+  }, [quizList, answerList]);
+
+  // 총 정답률 계산
+  const totalStats = useMemo(() => {
+    if (!quizList.length) return { score: 0, totalQuestions: 0, wrongAnswers: 0 };
+
+    let correctCount = 0;
+    let wrongCount = 0;
+
+    quizList.forEach((quiz) => {
+      const userAnswer = answerList.find((answer) => answer.questionId === quiz.id);
+      if (userAnswer && userAnswer.answer === quiz.correctAnswer) {
+        correctCount++;
+      } else {
+        wrongCount++;
+      }
+    });
+
+    const score = Math.round((correctCount / quizList.length) * 100);
+    return {
+      score,
+      totalQuestions: quizList.length,
+      wrongAnswers: wrongCount,
+    };
+  }, [quizList, answerList]);
+
+  // 약점 카테고리 분석 (정답률이 50% 미만인 카테고리 중 가장 낮은 순)
+  const weakCategories = useMemo(() => {
+    const weakCats = resultData.filter((cat) => cat.correctRate < 50).sort((a, b) => a.correctRate - b.correctRate);
+
+    // 모든 카테고리의 정답률이 동일한 경우, 문제수가 많은 카테고리를 약점으로 선정
+    if (weakCats.length === 0 && resultData.length > 0) {
+      const allSameRate = resultData.every((cat) => cat.correctRate === resultData[0].correctRate);
+      if (allSameRate) {
+        return [...resultData].sort((a, b) => b.totalCount - a.totalCount).slice(0, 1);
+      }
+    }
+
+    return weakCats.slice(0, 2); // 정답률이 낮은 순으로 최대 2개 카테고리
+  }, [resultData]);
+
+  // 강점 카테고리 분석 (정답률이 50% 이상인 카테고리 중 가장 높은 순)
+  const strongCategories = useMemo(() => {
+    const strongCats = resultData.filter((cat) => cat.correctRate >= 50).sort((a, b) => b.correctRate - a.correctRate);
+
+    // 모든 카테고리의 정답률이 동일한 경우, 문제수가 많은 카테고리를 강점으로 선정
+    if (strongCats.length === 0 && resultData.length > 0) {
+      const allSameRate = resultData.every((cat) => cat.correctRate === resultData[0].correctRate);
+      if (allSameRate) {
+        return [...resultData].sort((a, b) => b.totalCount - a.totalCount).slice(0, 1);
+      }
+    }
+
+    return strongCats.slice(0, 2); // 정답률이 높은 순으로 최대 2개 카테고리
+  }, [resultData]);
+
   return (
-    <Card className="flex flex-col">
-      <CardHeader className="items-center pb-0">
-        <CardTitle>Pie Chart - Donut with Text</CardTitle>
-        <CardDescription>January - June 2024</CardDescription>
-      </CardHeader>
-      <CardContent className="flex-1 pb-0">
-        <ChartContainer config={chartConfig} className="mx-auto aspect-square max-h-[250px]">
-          <PieChart>
-            <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-            <Pie data={chartData} dataKey="visitors" nameKey="browser" innerRadius={60} strokeWidth={5}>
-              <Label
-                content={({ viewBox }) => {
-                  if (viewBox && "cx" in viewBox && "cy" in viewBox) {
-                    return (
-                      <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
-                        <tspan x={viewBox.cx} y={viewBox.cy} className="fill-foreground text-3xl font-bold">
-                          {totalVisitors.toLocaleString()}
-                        </tspan>
-                        <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 24} className="fill-muted-foreground">
-                          Visitors
-                        </tspan>
-                      </text>
-                    );
-                  }
-                }}
-              />
-            </Pie>
-          </PieChart>
-        </ChartContainer>
-      </CardContent>
-      <CardFooter className="flex-col gap-2 text-sm">
-        <div className="flex items-center gap-2 font-medium leading-none">Trending up by 5.2% this month</div>
-        <div className="leading-none text-muted-foreground">Showing total visitors for the last 6 months</div>
-      </CardFooter>
-    </Card>
+    <div className="flex flex-col items-center w-full max-w-3xl mx-auto p-4">
+      <h2 className="text-2xl font-bold pt-10 mb-6">경제 지식 분석 결과</h2>
+
+      {resultData.length > 0 ? (
+        <>
+          <div className="w-full mb-8 flex flex-col items-center">
+            <div className="mb-4 text-center">
+              <p className="text-lg">
+                총 {totalStats.totalQuestions}문제 중 {totalStats.wrongAnswers}개 오답
+              </p>
+              <p className="text-2xl font-bold mt-2">전체 정답률: {totalStats.score}%</p>
+            </div>
+
+            {totalStats.wrongAnswers > 0 && (
+              <div className="w-full">
+                <h3 className="text-xl font-bold mb-2 text-center">오답 분포</h3>
+                <ChartContainer config={chartConfig} className="mx-auto aspect-square max-h-[300px]">
+                  <PieChart>
+                    <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+                    <Pie data={resultData} dataKey="percentage" nameKey="category" innerRadius={60} strokeWidth={5}>
+                      {resultData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                      <Label
+                        content={({ viewBox }) => {
+                          if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                            return (
+                              <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
+                                <tspan x={viewBox.cx} y={viewBox.cy} className="fill-foreground text-3xl font-bold">
+                                  {totalStats.wrongAnswers}
+                                </tspan>
+                                <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 24} className="fill-muted-foreground">
+                                  총 오답 수
+                                </tspan>
+                              </text>
+                            );
+                          }
+                        }}
+                      />
+                    </Pie>
+                  </PieChart>
+                </ChartContainer>
+              </div>
+            )}
+          </div>
+
+          <div className="w-full">
+            <h3 className="text-xl font-bold mb-4">카테고리별 분석</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              {resultData.map((item) => (
+                <div key={item.category} className="border rounded-lg p-4 shadow-sm">
+                  <h4 className="font-semibold mb-2" style={{ color: item.color }}>
+                    {item.name}
+                  </h4>
+                  <div className="flex justify-between items-center mb-1">
+                    <span>오답 수:</span>
+                    <span className="font-bold">
+                      {item.wrongCount}/{item.totalCount}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>전체 오답 중 비율:</span>
+                    <span className="text-lg font-bold">{item.percentage}%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {weakCategories.length > 0 && (
+              <div className="mt-8 bg-gray-50 p-6 rounded-lg shadow-sm">
+                <h3 className="text-xl font-bold mb-4">취약점 분석</h3>
+                {weakCategories.map((category, index) => (
+                  <div key={index} className="mb-4 last:mb-0">
+                    <p className="font-medium mb-2">
+                      <span className="text-red-600">취약 분야 {index + 1}:</span> {category.name}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {category.name} 분야에서 {category.wrongCount}개의 오답이 있습니다 (정답률 {category.correctRate}
+                      %). 이 분야에 대한 추가 학습이 필요합니다.
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {strongCategories.length > 0 && (
+              <div className="mt-4 bg-blue-50 p-6 rounded-lg shadow-sm">
+                <h3 className="text-xl font-bold mb-4">강점 분석</h3>
+                {strongCategories.map((category, index) => (
+                  <div key={index} className="mb-4 last:mb-0">
+                    <p className="font-medium mb-2">
+                      <span className="text-blue-600">강점 분야 {index + 1}:</span> {category.name}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {category.name} 분야에서 {category.totalCount - category.wrongCount}개의 문제를 맞췄습니다 (정답률{" "}
+                      {category.correctRate}%). 이 분야에 대한 이해도가 높습니다.
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        <div className="text-center p-10">
+          <p className="text-lg text-gray-600">퀴즈 데이터가 없습니다. 퀴즈를 먼저 풀어주세요.</p>
+        </div>
+      )}
+    </div>
   );
 }

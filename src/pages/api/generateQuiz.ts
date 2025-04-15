@@ -1,10 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // POST 요청만 허용
   if (req.method !== "POST") {
     return res.status(405).json({ message: "허용되지 않는 메소드입니다" });
@@ -24,9 +21,9 @@ export default async function handler(
       apiKey: apiKey,
     });
 
-    const prompt = `넌 뛰어난 경제 선생님이고 경제 상식을 알 수 있는 문제 3개를 JSON 형식으로 만들어줘. 난이도는 ${
+    const prompt = `넌 뛰어난 경제 선생님이고 다음 세 가지 주제에 대해 각각 3문제씩 총 9개의 경제 상식 문제를 JSON 형식으로 만들어줘. 주제는 1) 금융 상품 및 금융 기관에 대한 이해(category: financial), 2) 경제 개념 및 지표 이해(category: economicConcepts), 3) 부동산(category: realEstate)이야. 난이도는 ${
       difficulty || "보통"
-    }으로 설정해줘. 각 문제에는 "question", "options" (a, b, c, d), "explanation", "correctAnswer" 필드가 있어야 해. 한국 사람이 쉽게 이해할 수 있도록 문제를 만들어주고 한국어로 대답해줘 가끔은 경제 용어를 맞추는 문제도 만들어줘`;
+    }으로 설정해줘. 각 문제에는 "question", "options" (a, b, c, d), "explanation", "correctAnswer", "category" 필드가 있어야 해. category 필드는 "financial", "economicConcepts", "realEstate" 중 하나여야 해. 한국 사람이 쉽게 이해할 수 있도록 문제를 만들어주고 한국어로 대답해줘.`;
 
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash-lite",
@@ -84,8 +81,13 @@ export default async function handler(
                 description: "The correct answer option (a, b, c, or d)",
                 nullable: false,
               },
+              category: {
+                type: Type.STRING,
+                description: "The category of the question (financial, economicConcepts, or realEstate)",
+                nullable: false,
+              },
             },
-            required: ["question", "options", "explanation", "correctAnswer"],
+            required: ["question", "options", "explanation", "correctAnswer", "category"],
           },
         },
       },
