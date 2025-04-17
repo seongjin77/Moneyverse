@@ -50,7 +50,6 @@ export default function Quiz() {
       }
 
       const data = await response.json();
-      console.log(data);
       setQuestions(data.data);
       setLoading(false);
     } catch (err) {

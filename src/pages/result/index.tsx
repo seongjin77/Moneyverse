@@ -2,6 +2,7 @@
 
 import { useQuizStore } from "@/store/useQuizStore";
 import { useMemo } from "react";
+import { useRouter } from "next/navigation";
 
 import { Label, Pie, PieChart, Cell } from "recharts";
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -29,7 +30,7 @@ const chartConfig = {
 interface CategoryResult {
   category: string;
   name: string;
-  percentage: number;
+  wrongPercentage: number;
   wrongCount: number;
   totalCount: number;
   correctRate: number;
@@ -37,6 +38,7 @@ interface CategoryResult {
 }
 
 export default function Result() {
+  const router = useRouter();
   const quizList = useQuizStore((state) => state.storeQuizList);
   const answerList = useQuizStore((state) => state.storeAnswerList);
 
@@ -76,7 +78,7 @@ export default function Result() {
     return Object.entries(categoryResults)
       .map(([category, { wrong, total }]) => {
         // 전체 오답 중 이 카테고리의 오답 비율
-        const percentage = totalWrongCount > 0 && wrong > 0 ? Math.round((wrong / totalWrongCount) * 100) : 0;
+        const wrongPercentage = totalWrongCount > 0 && wrong > 0 ? Math.round((wrong / totalWrongCount) * 100) : 0;
 
         // 카테고리별 정답률 계산 (맞은 문제 / 전체 문제)
         const correctRate = total > 0 ? Math.round(((total - wrong) / total) * 100) : 0;
@@ -87,7 +89,7 @@ export default function Result() {
         return {
           category,
           name: chartConfig[categoryKey].label, // 직접 label 값을 name으로 사용
-          percentage,
+          wrongPercentage,
           wrongCount: wrong,
           totalCount: total,
           correctRate, // 카테고리별 정답률 추가
@@ -98,59 +100,30 @@ export default function Result() {
       .filter((item) => item.totalCount > 0); // 문제가 있는 카테고리만 표시 (오답이 없어도 표시)
   }, [quizList, answerList]);
 
-  // 총 정답률 계산
-  const totalStats = useMemo(() => {
-    if (!quizList.length) return { score: 0, totalQuestions: 0, wrongAnswers: 0 };
+  console.log(resultData);
 
-    let correctCount = 0;
-    let wrongCount = 0;
+  const totalStats = resultData.reduce(
+    (acc, curr) => {
+      return {
+        totalCorrect: acc.totalCorrect + (curr.totalCount - curr.wrongCount),
+        totalQuestions: acc.totalQuestions + curr.totalCount,
+        wrongAnswers: acc.wrongAnswers + curr.wrongCount,
+      };
+    },
+    { totalCorrect: 0, totalQuestions: 0, wrongAnswers: 0 }
+  );
 
-    quizList.forEach((quiz) => {
-      const userAnswer = answerList.find((answer) => answer.questionId === quiz.id);
-      if (userAnswer && userAnswer.answer === quiz.correctAnswer) {
-        correctCount++;
-      } else {
-        wrongCount++;
-      }
-    });
-
-    const score = Math.round((correctCount / quizList.length) * 100);
-    return {
-      score,
-      totalQuestions: quizList.length,
-      wrongAnswers: wrongCount,
-    };
-  }, [quizList, answerList]);
+  // 전체 정답률을 정확히 계산 (맞은 문제 / 전체 문제)
+  const scorePercentage =
+    totalStats.totalQuestions > 0 ? Math.round((totalStats.totalCorrect / totalStats.totalQuestions) * 100) : 0;
 
   // 약점 카테고리 분석 (정답률이 50% 미만인 카테고리 중 가장 낮은 순)
-  const weakCategories = useMemo(() => {
-    const weakCats = resultData.filter((cat) => cat.correctRate < 50).sort((a, b) => a.correctRate - b.correctRate);
-
-    // 모든 카테고리의 정답률이 동일한 경우, 문제수가 많은 카테고리를 약점으로 선정
-    if (weakCats.length === 0 && resultData.length > 0) {
-      const allSameRate = resultData.every((cat) => cat.correctRate === resultData[0].correctRate);
-      if (allSameRate) {
-        return [...resultData].sort((a, b) => b.totalCount - a.totalCount).slice(0, 1);
-      }
-    }
-
-    return weakCats.slice(0, 2); // 정답률이 낮은 순으로 최대 2개 카테고리
-  }, [resultData]);
+  const weakCategory = resultData.filter((cat) => cat.correctRate < 50).sort((a, b) => a.correctRate - b.correctRate);
 
   // 강점 카테고리 분석 (정답률이 50% 이상인 카테고리 중 가장 높은 순)
-  const strongCategories = useMemo(() => {
-    const strongCats = resultData.filter((cat) => cat.correctRate >= 50).sort((a, b) => b.correctRate - a.correctRate);
-
-    // 모든 카테고리의 정답률이 동일한 경우, 문제수가 많은 카테고리를 강점으로 선정
-    if (strongCats.length === 0 && resultData.length > 0) {
-      const allSameRate = resultData.every((cat) => cat.correctRate === resultData[0].correctRate);
-      if (allSameRate) {
-        return [...resultData].sort((a, b) => b.totalCount - a.totalCount).slice(0, 1);
-      }
-    }
-
-    return strongCats.slice(0, 2); // 정답률이 높은 순으로 최대 2개 카테고리
-  }, [resultData]);
+  const strongCategory = resultData
+    .filter((cat) => cat.correctRate >= 50)
+    .sort((a, b) => b.correctRate - a.correctRate);
 
   return (
     <div className="flex flex-col items-center w-full max-w-3xl mx-auto p-4">
@@ -163,7 +136,7 @@ export default function Result() {
               <p className="text-lg">
                 총 {totalStats.totalQuestions}문제 중 {totalStats.wrongAnswers}개 오답
               </p>
-              <p className="text-2xl font-bold mt-2">전체 정답률: {totalStats.score}%</p>
+              <p className="text-2xl font-bold mt-2">전체 정답률: {scorePercentage}%</p>
             </div>
 
             {totalStats.wrongAnswers > 0 && (
@@ -172,7 +145,13 @@ export default function Result() {
                 <ChartContainer config={chartConfig} className="mx-auto aspect-square max-h-[300px]">
                   <PieChart>
                     <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-                    <Pie data={resultData} dataKey="percentage" nameKey="category" innerRadius={60} strokeWidth={5}>
+                    <Pie
+                      data={resultData}
+                      dataKey="wrongPercentage"
+                      nameKey="category"
+                      innerRadius={60}
+                      strokeWidth={5}
+                    >
                       {resultData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
@@ -215,16 +194,16 @@ export default function Result() {
                   </div>
                   <div className="flex justify-between items-center">
                     <span>전체 오답 중 비율:</span>
-                    <span className="text-lg font-bold">{item.percentage}%</span>
+                    <span className="text-lg font-bold">{item.wrongPercentage}%</span>
                   </div>
                 </div>
               ))}
             </div>
 
-            {weakCategories.length > 0 && (
+            {weakCategory && (
               <div className="mt-8 bg-gray-50 p-6 rounded-lg shadow-sm">
                 <h3 className="text-xl font-bold mb-4">취약점 분석</h3>
-                {weakCategories.map((category, index) => (
+                {weakCategory.map((category, index) => (
                   <div key={index} className="mb-4 last:mb-0">
                     <p className="font-medium mb-2">
                       <span className="text-red-600">취약 분야 {index + 1}:</span> {category.name}
@@ -238,10 +217,10 @@ export default function Result() {
               </div>
             )}
 
-            {strongCategories.length > 0 && (
+            {strongCategory && (
               <div className="mt-4 bg-blue-50 p-6 rounded-lg shadow-sm">
                 <h3 className="text-xl font-bold mb-4">강점 분석</h3>
-                {strongCategories.map((category, index) => (
+                {strongCategory.map((category, index) => (
                   <div key={index} className="mb-4 last:mb-0">
                     <p className="font-medium mb-2">
                       <span className="text-blue-600">강점 분야 {index + 1}:</span> {category.name}
@@ -258,7 +237,13 @@ export default function Result() {
         </>
       ) : (
         <div className="text-center p-10">
-          <p className="text-lg text-gray-600">퀴즈 데이터가 없습니다. 퀴즈를 먼저 풀어주세요.</p>
+          <p className="text-lg text-gray-600 mb-6">퀴즈 데이터가 없습니다. 퀴즈를 먼저 풀어주세요.</p>
+          <button
+            onClick={() => router.push("/")}
+            className="px-6 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors"
+          >
+            홈으로 이동하기
+          </button>
         </div>
       )}
     </div>
